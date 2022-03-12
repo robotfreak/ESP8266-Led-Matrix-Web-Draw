@@ -67,11 +67,11 @@
 		}
 	</style>
 	<meta charset="utf-8">
-	<title>LED Matrix WebDraw</title>
+	<title>Flipdot Matrix WebDraw</title>
 </head>
 
 <body>
-	<input class="color no-alpha" value="rgb(162, 63, 3)" style="background-color: rgb(162, 63, 3); color: rgb(221, 221, 221);">
+	<input class="color no-alpha" value="rgb(229, 233, 10)" style="background-color: rgb(229, 233, 10); color: rgb(221, 221, 221);">
 	<button id="createMap">Copy code to clipboard</button>
 	<button id="clearButton">Clear</button>
 	<div class="divTable" style="border: 1px solid #000;">
@@ -91,8 +91,8 @@
 			}
 		}
 
-		var displayWidth = 64;
-		var displayHeight = 32;
+		var displayWidth = 115;
+		var displayHeight = 16;
 
 		$(document).ready(function() {
 
@@ -162,7 +162,7 @@
 			document.body.removeChild(dummy);
 		}
 
-		var exampleSocket = new WebSocket("ws://192.168.1.18:81");
+		var exampleSocket = new WebSocket("ws://192.168.188.50:81");
 
 		$("#clearButton").click(function() {
 			exampleSocket.send("CLEAR");
