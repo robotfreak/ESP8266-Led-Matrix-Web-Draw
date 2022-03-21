@@ -141,7 +141,7 @@
 			message += yCord + ',';
 			message += '0x' + convertedColour;
 
-			exampleSocket.send(message);
+			socket.send(message);
 		}
 
 		function convertColourToRGB565(colour) {
@@ -163,15 +163,39 @@
 			document.body.removeChild(dummy);
 		}
 
-		var exampleSocket = new WebSocket("ws://192.168.188.50:81");
+		var socket = new WebSocket("ws://192.168.188.50:81");
+
+		socket.onopen = function(e) {
+  			alert("[open] Connection established");
+  			alert("Sending to server");
+  			socket.send("My name is John");
+		};
+
+		socket.onmessage = function(event) {
+  			alert(`[message] Data received from server: ${event.data}`);
+		};
+
+		socket.onclose = function(event) {
+  			if (event.wasClean) {
+    			alert(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+  			} else {
+    		// e.g. server process killed or network down
+    		// event.code is usually 1006 in this case
+    		alert('[close] Connection died');
+  			}
+		};
+
+		socket.onerror = function(error) {
+  			alert(`[error] ${error.message}`);
+		};
 
 		$("#clearButton").click(function() {
-			exampleSocket.send("ALLOFF");
+			socket.send("ALLOFF");
 			$(".divTableCell").css('background-color', "rgb(0, 0, 0)");
 		});
 
 		$("#onButton").click(function() {
-			exampleSocket.send("ALLON");
+			socket.send("ALLON");
 			$(".divTableCell").css('background-color', $(".color").val());
 		});
 
