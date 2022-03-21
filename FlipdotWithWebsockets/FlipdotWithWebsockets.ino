@@ -41,8 +41,9 @@ void display_drawPixel(int x , int y, int colour) {
   else Serial.printf("S,B,%d,%d\n",x,y);
 }
 
-void clearDisplay(void) {
-  Serial.printf("C,B,0,0\n");
+void clearDisplay(int colour) {
+  if (colour) Serial.printf("C,Y,0,0\n");
+  else Serial.printf("C,B,0,0\n");
 }
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
@@ -77,9 +78,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
       Serial.print(">");
       Serial.println(inPayload);
 
-      if (inPayload == "CLEAR") {
-        clearDisplay();
-      } else {
+      if (inPayload == "ALLOFF") {
+        clearDisplay(0);
+      } else if(inPayload == "ALLON") {
+        clearDisplay(1);
+      }
+      else {
 
         // clear commas
         // need to makr this use size of
@@ -105,25 +109,25 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         // grab command
         int commandSeperator = inPayload.indexOf(":");
         command = inPayload.substring(0,commandSeperator).toInt();
-        Serial.print(">");
-        Serial.println(command);
+        //Serial.print(">");
+        //Serial.println(command);
         
         x = inPayload.substring(commandSeperator+1, commas[0]).toInt();
         y = inPayload.substring(commas[0] + 1, commas[1]).toInt();
 
-        Serial.print(">");
-        Serial.print(x);
-        Serial.print(",");
-        Serial.println(y);
+        //Serial.print(">");
+        //Serial.print(x);
+        //Serial.print(",");
+        //Serial.println(y);
       
         if ( command == 0 ) // draw pixel
         {
           colourString = inPayload.substring(commas[1] + 1);
-          Serial.print(">");
-          Serial.println(colourString);
+          //Serial.print(">");
+          //Serial.println(colourString);
           colour = strtol(colourString.c_str(), NULL, 0);
-          Serial.print(">");
-          Serial.println(colour);
+          //Serial.print(">");
+          //Serial.println(colour);
           display_drawPixel(x , y, colour);
         }
         else if ( command == 1 ) // rect
@@ -203,7 +207,7 @@ void clearDisplay(){
 */
 void setup() {
 
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   //@@ display.begin(16);
   //@@ display.clearDisplay();

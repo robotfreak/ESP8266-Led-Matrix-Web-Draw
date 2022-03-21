@@ -73,7 +73,8 @@
 <body>
 	<input class="color no-alpha" value="rgb(229, 233, 10)" style="background-color: rgb(229, 233, 10); color: rgb(221, 221, 221);">
 	<button id="createMap">Copy code to clipboard</button>
-	<button id="clearButton">Clear</button>
+	<button id="clearButton">All Off</button>
+	<button id="onButton">All On</button>
 	<div class="divTable" style="border: 1px solid #000;">
 		<div class="divTableBody" id="divTableBody">
 
@@ -165,8 +166,13 @@
 		var exampleSocket = new WebSocket("ws://192.168.188.50:81");
 
 		$("#clearButton").click(function() {
-			exampleSocket.send("CLEAR");
+			exampleSocket.send("ALLOFF");
 			$(".divTableCell").css('background-color', "rgb(0, 0, 0)");
+		});
+
+		$("#onButton").click(function() {
+			exampleSocket.send("ALLON");
+			$(".divTableCell").css('background-color', $(".color").val());
 		});
 
 		$("#createMap").click(function() {
