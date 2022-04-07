@@ -75,6 +75,8 @@
 	<button id="createMap">Copy code to clipboard</button>
 	<button id="clearButton">All Off</button>
 	<button id="onButton">All On</button>
+	<input id="textInput" value="eLAB">
+	<button id="textButton">Send</button>
 	<div class="divTable" style="border: 1px solid #000;">
 		<div class="divTableBody" id="divTableBody">
 
@@ -163,12 +165,12 @@
 			document.body.removeChild(dummy);
 		}
 
-		var socket = new WebSocket("ws://192.168.188.50:81");
+		//var socket = new WebSocket("ws://217.197.81.43:81");
+		var socket = new WebSocket("ws://192.168.188.55:81");
 
 		socket.onopen = function(e) {
   			alert("[open] Connection established");
   			alert("Sending to server");
-  			socket.send("My name is John");
 		};
 
 		socket.onmessage = function(event) {
@@ -198,6 +200,18 @@
 			socket.send("ALLON");
 			$(".divTableCell").css('background-color', $(".color").val());
 		});
+
+		$("#textButton").click(function() {
+			var message = '4:' 
+			message += 0 + ',';
+			message += 0 + ',';
+			message += '0x1234' + ',';
+			message += '16pt' + ',';
+			message += $("#textInput").val();
+
+			socket.send(message);
+		});
+		
 
 		$("#createMap").click(function() {
 			var textOutput = "uint16_t static picture[] = {";
