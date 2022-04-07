@@ -11,19 +11,35 @@
 
 #include <Arduino.h>
 
+/* Configuration of NTP */
+#define MY_NTP_SERVER "de.pool.ntp.org"           
+#define MY_TZ "CET-1CEST,M3.5.0/02,M10.5.0/03"   
+
+#ifdef ESP8266
 #include <ESP8266WiFi.h>
+#else
+#include <WiFi.h>
+#endif
 #include <WebSocketsServer.h>
 #include <Hash.h>
+
 
 // ----------------------------
 // Standard Libraries - Already Installed if you have ESP8266 set up
 // ----------------------------
+#include <time.h>                       // time() ctime()
+#ifdef ESP8266
+#include <sys/time.h>                   // struct timeval
+#endif
 
 #include <Ticker.h>
 
 // ----------------------------
 // Additional Libraries - each one of these will need to be installed.
 // ----------------------------
+#include "CronAlarms.h"
+
+CronId id;
 
 
 #define ELEMENTS(x)   (sizeof(x) / sizeof(x[0]))
@@ -36,9 +52,49 @@ char password[] = WIFI_PASS;  // your network key
 
 WebSocketsServer webSocket = WebSocketsServer(81);
 
+/* Globals */
+time_t now;                         // this is the epoch
+tm tm;                              // the structure tm holds time information in a more convient way
+
+void showTime() {
+  time(&now);                       // read the current time
+  localtime_r(&now, &tm);           // update the structure tm with the current time
+  Serial.print(">year:");
+  Serial.print(tm.tm_year + 1900);  // years since 1900
+  Serial.print("\tmonth:");
+  Serial.print(tm.tm_mon + 1);      // January = 0 (!)
+  Serial.print("\tday:");
+  Serial.print(tm.tm_mday);         // day of month
+  Serial.print("\thour:");
+  Serial.print(tm.tm_hour);         // hours since midnight  0-23
+  Serial.print("\tmin:");
+  Serial.print(tm.tm_min);          // minutes after the hour  0-59
+  Serial.print("\tsec:");
+  Serial.print(tm.tm_sec);          // seconds after the minute  0-61*
+  Serial.print("\twday");
+  Serial.print(tm.tm_wday);         // days since Sunday 0-6
+  if (tm.tm_isdst == 1)             // Daylight Saving Time flag
+    Serial.print("\tDST");
+  else
+    Serial.print("\tstandard");
+  Serial.println();
+}
+
+
 void display_drawPixel(int x , int y, int colour) {
-  if (colour) Serial.printf("S,Y,%d,%d\n",x,y);
-  else Serial.printf("S,B,%d,%d\n",x,y);
+  unsigned char color;
+  if (colour) color = 'Y'; else color = 'B'; 
+  Serial.printf("S,%c,%d,%d\n",color,x,y);
+}
+
+void display_drawText(int x, int y, int colour, String fontStr, String text) {
+  unsigned char color, font;
+  if (colour) color = 'Y'; else color = 'B'; 
+  if (fontStr == "16pt") font = 'X'; 
+  else if (fontStr == "8pt") font = 'L';
+  else if (fontStr == "5pt") font = 'S';
+  
+  Serial.printf("P,%c,%d,%d,%c,%s\n",color,x,y,font,text.c_str());
 }
 
 void clearDisplay(int colour) {
@@ -56,6 +112,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
   int commaCount = 0;
   String inPayload;
   String colourString;
+  String textString;
+  String fontString;
 
   int commas[] = {-1,-1,-1,-1}; // using 4 for now
   int command;
@@ -103,7 +161,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         1 = rect
         2 = line
         3 = cirle
-        4 = text ?????
+        4 = text 
         */
 
         // grab command
@@ -157,6 +215,18 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
           //@@ display.drawCircle( x, y, w, colour );
         }
+        else if ( command == 4 ) // text
+        {
+          colourString = inPayload.substring(commas[1] + 1);
+          //Serial.print(">");
+          //Serial.println(colourString);
+          colour = strtol(colourString.c_str(), NULL, 0);
+          //Serial.print(">");
+          //Serial.println(colour);
+          fontString = inPayload.substring(commas[2] + 1);
+          textString = inPayload.substring(commas[3] + 1);
+          display_drawText(x, y, colour, fontString, textString);
+        }
 
 
         
@@ -189,6 +259,21 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
   }
 
 }
+
+int state = 0;
+
+void showNews() {
+  showTime();  
+  //time_t tnow = time(nullptr);
+  //Serial.print(">");
+  //Serial.println(asctime(gmtime(&tnow)));
+  Serial.println(">5 minute timer");
+  Serial.printf("n,Y,%d,0\n", state);
+  state++;
+  if (state >= 4) state = 0;
+}
+
+
 /*@@
 void display_updater()
 {
@@ -209,6 +294,7 @@ void setup() {
 
   Serial.begin(9600);
 
+  configTime(MY_TZ, MY_NTP_SERVER); // set time zone NTP server
   //@@ display.begin(16);
   //@@ display.clearDisplay();
 
@@ -236,11 +322,18 @@ void setup() {
   Serial.print(">");
   Serial.println(ip);
 
+  Cron.create(" 0 */5 18-23 * * *", showNews, false);           // timer for every 5 minutes (18-23Uhr)
+
+  showTime();
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 }
 
 void loop() {
+  //Serial.print(">");
+  //Serial.println(asctime(gmtime(&tnow)));
+  Cron.delay();// if the loop has nothing else to do, delay in ms
+
   webSocket.loop();
 
 }
