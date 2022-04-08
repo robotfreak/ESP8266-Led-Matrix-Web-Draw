@@ -75,6 +75,10 @@
 	<button id="createMap">Copy code to clipboard</button>
 	<button id="clearButton">All Off</button>
 	<button id="onButton">All On</button>
+        <input id="disable" type="checkbox">
+	<input id="xInput" value="0">
+	<input id="yInput" value="0">
+	<input id="fontInput" value="16pt">
 	<input id="textInput" value="eLAB">
 	<button id="textButton">Send</button>
 	<div class="divTable" style="border: 1px solid #000;">
@@ -165,8 +169,8 @@
 			document.body.removeChild(dummy);
 		}
 
-		//var socket = new WebSocket("ws://217.197.81.43:81");
-		var socket = new WebSocket("ws://192.168.188.55:81");
+		var socket = new WebSocket("ws://217.197.81.15:81");
+		//var socket = new WebSocket("ws://192.168.188.55:81");
 
 		socket.onopen = function(e) {
   			alert("[open] Connection established");
@@ -201,12 +205,16 @@
 			$(".divTableCell").css('background-color', $(".color").val());
 		});
 
+		$("#disable").change(function() {
+			if ($(this).prop('checked')) socket.send("NEWSON"); else socket.send("NEWSOFF");
+		});
+
 		$("#textButton").click(function() {
 			var message = '4:' 
-			message += 0 + ',';
-			message += 0 + ',';
+			message += $("#xInput").val() + ',';
+			message += $("#yInput").val() + ',';
 			message += '0x1234' + ',';
-			message += '16pt' + ',';
+			message += $("#fontInput").val() + ',';
 			message += $("#textInput").val();
 
 			socket.send(message);

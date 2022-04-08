@@ -41,6 +41,19 @@
 
 CronId id;
 
+const byte STOP_PIN = 2;
+
+bool newsEnable = true;
+int newsTimeout = -1;
+
+int buttonState;             // the current reading from the input pin
+int lastButtonState = LOW;   // the previous reading from the input pin
+
+// the following variables are unsigned long's because the time, measured in miliseconds,
+// will quickly become a bigger number than can be stored in an int.
+unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
+
 
 #define ELEMENTS(x)   (sizeof(x) / sizeof(x[0]))
 
@@ -90,10 +103,10 @@ void display_drawPixel(int x , int y, int colour) {
 void display_drawText(int x, int y, int colour, String fontStr, String text) {
   unsigned char color, font;
   if (colour) color = 'Y'; else color = 'B'; 
-  if (fontStr == "16pt") font = 'X'; 
-  else if (fontStr == "8pt") font = 'L';
-  else if (fontStr == "5pt") font = 'S';
-  
+  if (fontStr.equals("16pt")) font = 'X'; 
+  else if (fontStr.equals("8pt")) font = 'L';
+  else if (fontStr.equals("5pt")) font = 'S';
+  //Serial.printf(">%s\n",fontStr.c_str());
   Serial.printf("P,%c,%d,%d,%c,%s\n",color,x,y,font,text.c_str());
 }
 
@@ -115,7 +128,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
   String textString;
   String fontString;
 
-  int commas[] = {-1,-1,-1,-1}; // using 4 for now
+  int commas[] = {-1,-1,-1,-1,-1}; // using 5 for now
   int command;
   switch (type) {
     case WStype_DISCONNECTED:
@@ -140,6 +153,12 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         clearDisplay(0);
       } else if(inPayload == "ALLON") {
         clearDisplay(1);
+      } else if(inPayload == "NEWSON") {
+        newsEnable = true;
+        
+      } else if(inPayload == "NEWSOFF") {
+        newsEnable = false;
+        
       }
       else {
 
@@ -224,7 +243,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           //Serial.print(">");
           //Serial.println(colour);
           fontString = inPayload.substring(commas[2] + 1);
+          Serial.printf(">fnt: %s", fontString.c_str());
           textString = inPayload.substring(commas[3] + 1);
+          Serial.printf(">txt: %s", textString.c_str());
           display_drawText(x, y, colour, fontString, textString);
         }
 
@@ -268,9 +289,23 @@ void showNews() {
   //Serial.print(">");
   //Serial.println(asctime(gmtime(&tnow)));
   Serial.println(">5 minute timer");
-  Serial.printf("n,Y,%d,0\n", state);
-  state++;
-  if (state >= 4) state = 0;
+  if (newsEnable == true) {
+    Serial.printf("n,Y,%d,0\n", state);
+    state++;
+    if (state >= 4) state = 0;
+  }
+  else {
+    Serial.println(">News disabled");
+    if (newsTimeout > 0) {
+      newsTimeout--;
+    }
+    if (newsTimeout == 0) {
+      newsTimeout = -1;
+      newsEnable == true;
+      Serial.println(">Timeout over. News enabled");
+    }
+    
+  }
 }
 
 
@@ -293,6 +328,8 @@ void clearDisplay(){
 void setup() {
 
   Serial.begin(9600);
+
+  pinMode(STOP_PIN, INPUT_PULLUP);
 
   configTime(MY_TZ, MY_NTP_SERVER); // set time zone NTP server
   //@@ display.begin(16);
@@ -330,10 +367,56 @@ void setup() {
 }
 
 void loop() {
+
+  boolean btn;
+
+  btn = checkButton(STOP_PIN);
+  if (btn == true) {
+    newsTimeout = 24; // *5min = 2h
+    newsEnable = false; 
+    Serial.println(">Stop Button pressed. 2h Timeout enabled");
+  }
+
   //Serial.print(">");
   //Serial.println(asctime(gmtime(&tnow)));
   Cron.delay();// if the loop has nothing else to do, delay in ms
 
   webSocket.loop();
 
+}
+
+boolean checkButton(int buttonPin)
+{
+  boolean ret = false;
+  // read the state of the switch into a local variable:
+  int reading = digitalRead(buttonPin);
+
+  // check to see if you just pressed the button
+  // (i.e. the input went from LOW to HIGH),  and you've waited
+  // long enough since the last press to ignore any noise:
+
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+
+    // if the button state has changed:
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      if (buttonState == LOW) {
+        ret = true;
+      }
+    }
+  }
+
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonState = reading;
+  return ret;
 }
