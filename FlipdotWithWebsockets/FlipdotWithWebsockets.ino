@@ -100,14 +100,14 @@ void display_drawPixel(int x , int y, int colour) {
   Serial.printf("S,%c,%d,%d\n",color,x,y);
 }
 
-void display_drawText(int x, int y, int colour, String fontStr, String text) {
-  unsigned char color, font;
+void display_drawText(int x, int y, int colour, int font, String text) {
+  unsigned char color, fnt;
   if (colour) color = 'Y'; else color = 'B'; 
-  if (fontStr.equals("16pt")) font = 'X'; 
-  else if (fontStr.equals("8pt")) font = 'L';
-  else if (fontStr.equals("5pt")) font = 'S';
-  //Serial.printf(">%s\n",fontStr.c_str());
-  Serial.printf("P,%c,%d,%d,%c,%s\n",color,x,y,font,text.c_str());
+  if (font == 16) fnt = 'X'; 
+  else if (font == 10) fnt = 'L';
+  else if (font == 8) fnt = 'M';
+  else if (font == 5) fnt = 'S';
+  Serial.printf("P,%c,%d,%d,%c,%s\n",color,x,y,fnt,text.c_str());
 }
 
 void clearDisplay(int colour) {
@@ -122,11 +122,11 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
   int w;
   int h;
   uint16_t colour;
+  int font;
   int commaCount = 0;
   String inPayload;
   String colourString;
   String textString;
-  String fontString;
 
   int commas[] = {-1,-1,-1,-1,-1}; // using 5 for now
   int command;
@@ -155,10 +155,10 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         clearDisplay(1);
       } else if(inPayload == "NEWSON") {
         newsEnable = true;
-        
+        newsTimeout = -1;
       } else if(inPayload == "NEWSOFF") {
         newsEnable = false;
-        
+        newsTimeout = -1;
       }
       else {
 
@@ -171,7 +171,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         int commaIndex = 0;
         for (int i = 0; i < inPayload.length(); i++ )
         {
-          if ( inPayload[i] == ',' )
+          if ( inPayload[i] == ',' && commaIndex < ELEMENTS(commas))
             commas[ commaIndex++ ] = i;
         }
         
@@ -191,11 +191,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         
         x = inPayload.substring(commandSeperator+1, commas[0]).toInt();
         y = inPayload.substring(commas[0] + 1, commas[1]).toInt();
-
-        //Serial.print(">");
-        //Serial.print(x);
-        //Serial.print(",");
-        //Serial.println(y);
+        Serial.printf(">x %d y %d\n", x, y);
       
         if ( command == 0 ) // draw pixel
         {
@@ -203,16 +199,17 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
           //Serial.print(">");
           //Serial.println(colourString);
           colour = strtol(colourString.c_str(), NULL, 0);
-          //Serial.print(">");
-          //Serial.println(colour);
+          Serial.printf(">col %d\n", colour);
           display_drawPixel(x , y, colour);
         }
         else if ( command == 1 ) // rect
         {
           w = inPayload.substring(commas[1] + 1, commas[2]).toInt();
           h = inPayload.substring(commas[2] + 1, commas[3]).toInt();
+          Serial.printf(">w %d h %d\n", w, h);
           colourString = inPayload.substring(commas[3] + 1);
           colour = strtol(colourString.c_str(), NULL, 0);
+          Serial.printf(">col %d\n", colour);
 
           //@@ display.drawRect( x, y, w, h, colour );
 
@@ -221,32 +218,41 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         {
           w = inPayload.substring(commas[1] + 1, commas[2]).toInt();
           h = inPayload.substring(commas[2] + 1, commas[3]).toInt();
+          Serial.printf(">w %d h %d\n", w, h);
           colourString = inPayload.substring(commas[3] + 1);
           colour = strtol(colourString.c_str(), NULL, 0);
+          Serial.printf(">col %d\n", colour);
 
           //@@ display.drawLine( x, y, w, h, colour );
         }
         else if ( command == 3 ) // circle
         {
           w = inPayload.substring(commas[1] + 1, commas[2]).toInt();
+          Serial.printf(">w %d\n", w);
           colourString = inPayload.substring(commas[2] + 1);
           colour = strtol(colourString.c_str(), NULL, 0);
+          Serial.printf(">col %d\n", colour);
 
           //@@ display.drawCircle( x, y, w, colour );
         }
         else if ( command == 4 ) // text
         {
-          colourString = inPayload.substring(commas[1] + 1);
+          colourString = inPayload.substring(commas[1] + 1, commas[2]);
           //Serial.print(">");
           //Serial.println(colourString);
           colour = strtol(colourString.c_str(), NULL, 0);
           //Serial.print(">");
           //Serial.println(colour);
-          fontString = inPayload.substring(commas[2] + 1);
-          Serial.printf(">fnt: %s", fontString.c_str());
-          textString = inPayload.substring(commas[3] + 1);
-          Serial.printf(">txt: %s", textString.c_str());
-          display_drawText(x, y, colour, fontString, textString);
+          Serial.printf(">col %d\n", colour);
+          font = inPayload.substring(commas[2] + 1, commas[3]).toInt();
+          Serial.printf(">fnt: %d\n", font);
+          if (commas[3] > 0) {
+            textString = inPayload.substring(commas[3] + 1);
+            Serial.printf(">txt: '%s'\n", textString.c_str());
+            display_drawText(x, y, colour, font, textString);
+          }
+          else
+            Serial.printf(">error no text\n");
         }
 
 
