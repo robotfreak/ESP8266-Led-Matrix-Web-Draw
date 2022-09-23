@@ -115,6 +115,21 @@ void clearDisplay(int colour) {
   else Serial.printf("C,B,0,0\n");
 }
 
+void setLedColor() {
+  ledColor(0,1,0);
+}
+
+void clrLedColor() {
+  ledColor(0,0,0);
+}
+
+void ledColor(int red, int green, int blue) {
+  if (red) Serial.printf("L,r,0,0\n");
+  else if (green) Serial.printf("L,g,0,0\n");
+  else if (blue) Serial.printf("L,b,0,0\n");
+  else Serial.printf("L,B,0,0\n");
+}
+
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
   char xArray[4];
   int x;
@@ -289,6 +304,37 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
 int state = 0;
 
+void showInBerlin() {
+  showNewsNum(0);
+}
+
+void showeLab() {
+  showNewsNum(1);
+}
+
+void showBelug() {
+  showNewsNum(2);
+}
+
+void showRetro() {
+  showNewsNum(3);
+}
+
+void showBC() {
+  showNewsNum(4);
+}
+
+void showNewsNum(int num) {
+  showTime();  
+  //time_t tnow = time(nullptr);
+  //Serial.print(">");
+  //Serial.println(asctime(gmtime(&tnow)));
+  Serial.println(">timer event");
+  if (newsEnable == true) {
+    Serial.printf("n,Y,%d,0\n", num);
+  }
+}
+
 void showNews() {
   showTime();  
   //time_t tnow = time(nullptr);
@@ -360,12 +406,18 @@ void setup() {
   }
   Serial.println(">");
   Serial.println(">WiFi connected");
-  Serial.println(">IP address: ");
+  //Serial.println(">IP address: ");
   IPAddress ip = WiFi.localIP();
-  Serial.print(">");
+  Serial.print("P,Y,0,0,S,");
   Serial.println(ip);
 
-  Cron.create(" 0 */5 18-23 * * *", showNews, false);           // timer for every 5 minutes (18-23Uhr)
+  //Cron.create(" 0 */15 18-22 * * *", showNews, false);           // timer for every 5 minutes (18-23Uhr)
+  Cron.create("0 */5 16-22 * * *", setLedColor, false);      // timer for every 5 minutes (16-22Uhr)
+  Cron.create("0 */5 22-23 * * *", clrLedColor, false);      // timer for every 5 minutes (16-22Uhr)
+  Cron.create("0 0 10 * * 2", showBC, false);      // timer for every 30 minutes (14-22Uhr)
+  Cron.create("0 0 10 * * 3", showBelug, false);      // timer for every 30 minutes (14-22Uhr)
+  Cron.create("0 0 10 * * 5", showBC, false);      // timer for every 30 minutes (14-22Uhr)
+  Cron.create("0 0 10 * * 6", showRetro, false);      // timer for every 30 minutes (14-22Uhr)
 
   showTime();
   webSocket.begin();
